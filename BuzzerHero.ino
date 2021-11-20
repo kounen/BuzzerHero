@@ -1,17 +1,43 @@
 #include <FastLED.h>
 
 #define LED_TYPE             WS2811
-#define NUM_STRIPS           4 // number of led strips, when changing this value, the setup function must be updated
-#define BRIGHTNESS           64 // brightness of the leds
-#define TILE_LENGTH          4 // number of leds per tile
 #define COLOR_ORDER          GRB
+#define STRIPS_NBR           4
+#define LEDS_PER_STRIP_NBR   30
+#define BRIGHTNESS           50
+
+CRGB leds[STRIPS_NBR][LEDS_PER_STRIP_NBR];
+
+void setupLeds(void)
+{
+    // Led PIN 2
+    FastLED.addLeds<LED_TYPE, 2, COLOR_ORDER>(leds[0], LEDS_PER_STRIP_NBR).setCorrection(TypicalLEDStrip);
+    // Led PIN 3
+    FastLED.addLeds<LED_TYPE, 3, COLOR_ORDER>(leds[1], LEDS_PER_STRIP_NBR).setCorrection(TypicalLEDStrip);
+    // Led PIN 4
+    FastLED.addLeds<LED_TYPE, 4, COLOR_ORDER>(leds[2], LEDS_PER_STRIP_NBR).setCorrection(TypicalLEDStrip);
+    // Led PIN 5
+    FastLED.addLeds<LED_TYPE, 5, COLOR_ORDER>(leds[3], LEDS_PER_STRIP_NBR).setCorrection(TypicalLEDStrip);
+}
+
+void setup(void)
+{
+    delay(3000); // Power-up safety delay
+    setupLeds();
+    initGame();
+    randomSeed(37);
+    Serial.begin(9600);
+    FastLED.setBrightness(BRIGHTNESS);
+}
+
+#define TILE_LENGTH          4 // number of leds per tile
 #define MIN_INTERVAL         5 // the minimum number of leds switched off between two tiles
 #define LEVEL_DURATION       5 // number of successful tap before level up
 #define MIN_TILE_DELAY       50 // in milliseconds, minimum duration for a tile in a position
 #define PIEZO_THRESHOLD      500
 #define GAME_OVER_DELAY      1000 // in miliseconds, duration of the break when game is over
 #define INIT_REFRESH_RATE    250 // in milliseconds, led strips refresh rate when game starts
-#define NUM_LEDS_PER_STRIP   30 // number of leds per strip
+
 #define MAX_TILES_PER_STRIP  3 // the maximum number of tiles present at the same time on a led strip
 #define TILE_GENERATION_PROB 15 // probability to generate a new tile when possible the smaller it is, the more likely it is to generate one
 #define LEVEL_SPEED_INCREASE 5 // in milliseconds, increase the speed of the led strip refresh rate when level
@@ -20,31 +46,17 @@ int score;
 int currentDelay;
 CRGB currentColor;
 unsigned long lastTime;
-int numTiles[NUM_STRIPS];
-bool canCheck[NUM_STRIPS];
-bool canCreate[NUM_STRIPS];
-int currentIndex[NUM_STRIPS];
-int tiles[NUM_STRIPS][MAX_TILES_PER_STRIP];
-CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
+int numTiles[STRIPS_NBR];
+bool canCheck[STRIPS_NBR];
+bool canCreate[STRIPS_NBR];
+int currentIndex[STRIPS_NBR];
+int tiles[STRIPS_NBR][MAX_TILES_PER_STRIP];
 
-void setup()
-{
-    delay(3000); // power-up safety delay
 
-    FastLED.addLeds<LED_TYPE, 2, COLOR_ORDER>(leds[0], NUM_LEDS_PER_STRIP).setCorrection(TypicalLEDStrip);
-    FastLED.addLeds<LED_TYPE, 3, COLOR_ORDER>(leds[1], NUM_LEDS_PER_STRIP).setCorrection(TypicalLEDStrip);
-    FastLED.addLeds<LED_TYPE, 4, COLOR_ORDER>(leds[2], NUM_LEDS_PER_STRIP).setCorrection(TypicalLEDStrip);
-    FastLED.addLeds<LED_TYPE, 5, COLOR_ORDER>(leds[3], NUM_LEDS_PER_STRIP).setCorrection(TypicalLEDStrip);
-    
-    InitGame();
-    randomSeed(37);
-    Serial.begin(9600);
-    FastLED.setBrightness(BRIGHTNESS);
-}
 
 void loop()
 { 
-  for(int i = 0; i < NUM_STRIPS; i++) {
+  for(int i = 0; i < STRIPS_NBR; i++) {
     int piezoValue = analogRead(i);
 
     // check if a bongo was hit
@@ -82,7 +94,7 @@ void loop()
     bool tileCreated = false;
     
     // refresh display
-    for(int i = 0; i < NUM_STRIPS; i++) {
+    for(int i = 0; i < STRIPS_NBR; i++) {
       SwitchOffLEDs(leds[i]);
 
       // Fill last tile
@@ -94,7 +106,7 @@ void loop()
         // 1/6 chance to create a new tile
         if(canCreate[i] && random(0, TILE_GENERATION_PROB) == 0 && !tileCreated) {
           numTiles[i]++;
-          tiles[i][currentIndex[i]] = NUM_LEDS_PER_STRIP - 1;
+          tiles[i][currentIndex[i]] = LEDS_PER_STRIP_NBR - 1;
           currentIndex[i]++;
           tileCreated = true;
         }
@@ -133,7 +145,7 @@ void loop()
         }
 
         // check if the tile is at the beginning of the strip
-        if(tiles[i][j] >= NUM_LEDS_PER_STRIP - TILE_LENGTH - MIN_INTERVAL) canCreate[i] = false;
+        if(tiles[i][j] >= LEDS_PER_STRIP_NBR - TILE_LENGTH - MIN_INTERVAL) canCreate[i] = false;
       }
     }
 
@@ -152,19 +164,19 @@ void FillTile(int tile, CRGB leds[], CRGB color)
 
 void SwitchOffLEDs(CRGB leds[])
 {
-  for(int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
+  for(int i = 0; i < LEDS_PER_STRIP_NBR; i++) {
     leds[i] = CRGB::Black;
   }
 }
 
-void InitGame()
+void initGame()
 { 
   score = 0;
   lastTime = millis();
   currentColor = CRGB::Yellow;
   currentDelay = INIT_REFRESH_RATE;
   
-  for(int i = 0; i < NUM_STRIPS; i++) {
+  for(int i = 0; i < STRIPS_NBR; i++) {
     numTiles[i] = 0;
     canCheck[i] = true;
     canCreate[i] = true;
@@ -178,13 +190,13 @@ void InitGame()
 
 void GameOver()
 {
-  for(int i = 0; i < NUM_STRIPS; i++) {
+  for(int i = 0; i < STRIPS_NBR; i++) {
     // Fill last tile in red
     FillTile(TILE_LENGTH - 1, leds[i], CRGB::Red);
   }
   FastLED.show();
   delay(GAME_OVER_DELAY);
-  InitGame();
+  initGame();
 }
 
 CRGB nextColor() {
